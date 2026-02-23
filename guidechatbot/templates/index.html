@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Travel Guide AI</title>
+
+<style>
+/* ===== GLOBAL ===== */
+body{
+  margin:0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg,#0ea5e9,#22c55e);
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* ===== CHAT CONTAINER ===== */
+.chat-app{
+  width:100%;
+  max-width:420px;
+  height:90vh;
+  background:#ffffff;
+  border-radius:18px;
+  box-shadow:0 20px 40px rgba(0,0,0,0.2);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ===== HEADER ===== */
+.header{
+  background:#10b981;
+  color:#fff;
+  padding:14px;
+  text-align:center;
+  font-weight:600;
+  font-size:18px;
+}
+
+/* ===== CHAT AREA ===== */
+#chat{
+  flex:1;
+  padding:14px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ===== MESSAGE BUBBLES ===== */
+.msg{
+  max-width:85%;
+  padding:12px 16px;
+  border-radius:16px;
+  margin-bottom:12px;
+  line-height:1.6;
+  font-size:14px;
+  animation:fadeIn .3s ease;
+  white-space:pre-line;
+}
+
+.user{
+  background:#dbeafe;
+  align-self:flex-end;
+  border-bottom-right-radius:4px;
+}
+
+.bot{
+  background:#f3f4f6;
+  align-self:flex-start;
+  border-bottom-left-radius:4px;
+}
+
+/* ===== TYPING INDICATOR ===== */
+.typing{
+  width:60px;
+  padding:10px;
+  background:#f3f4f6;
+  border-radius:14px;
+  margin-bottom:12px;
+  display:flex;
+  gap:4px;
+}
+.typing span{
+  width:6px;
+  height:6px;
+  background:#999;
+  border-radius:50%;
+  animation:blink 1.4s infinite both;
+}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+
+@keyframes blink{
+  0%{opacity:.2}
+  20%{opacity:1}
+  100%{opacity:.2}
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(5px)}
+  to{opacity:1}
+}
+
+/* ===== INPUT AREA ===== */
+.input-area{
+  display:flex;
+  padding:10px;
+  gap:6px;
+  border-top:1px solid #eee;
+}
+
+input{
+  flex:1;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #ddd;
+  outline:none;
+}
+
+button{
+  border:none;
+  padding:0 14px;
+  border-radius:12px;
+  background:#10b981;
+  color:white;
+  font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat-app">
+  <div class="header">🌍 Smart Travel Guide AI</div>
+
+  <div id="chat"></div>
+
+  <div class="input-area">
+    <input id="input" placeholder="Type 'hi' to start..." />
+    <button onclick="startVoice()">🎤</button>
+    <button onclick="send()">Send</button>
+  </div>
+</div>
+
+<script>
+/* ===== STATE ===== */
+let step = 0, userType="", state="", budget="";
+
+/* ===== DATA (EXTENDABLE) ===== */
+const data = {
+  "andhra pradesh":{
+    low:["Tirupati","Srisailam","Lepakshi","Ahobilam","Horsley Hills"],
+    medium:["Vizag","Araku","Vijayawada","Rajahmundry","Amaravati"],
+    high:["Papikondalu","Lambasingi","Borra Caves","Kailasagiri","Rushikonda"]
+  },
+  "telangana":{
+    low:["Yadadri","Basar","Warangal","Medak","Bhongir"],
+    medium:["Hyderabad","Nagarjuna Sagar","Ananthagiri","Ramoji"],
+    high:["Hussain Sagar","Charminar","Golconda","Film City"]
+  }
+};
+
+/* ===== HELPERS ===== */
+function normalize(t){ return t.toLowerCase().trim(); }
+
+function add(text, cls){
+  const div=document.createElement("div");
+  div.className="msg "+cls;
+  div.innerText=text;
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function typing(){
+  const t=document.createElement("div");
+  t.className="typing";
+  t.innerHTML="<span></span><span></span><span></span>";
+  chat.appendChild(t);
+  chat.scrollTop=chat.scrollHeight;
+  return t;
+}
+
+/* ===== MAIN SEND ===== */
+function send(){
+  let raw=input.value;
+  if(!raw) return;
+  input.value="";
+  add(raw,"user");
+  let text=normalize(raw);
+
+  let t=typing();
+  setTimeout(()=>{
+    t.remove();
+    reply(text);
+  },700);
+}
+
+/* ===== BOT LOGIC ===== */
+function reply(text){
+
+  if(step===0){
+    if(["hi","hello","hey"].includes(text)){
+      add("Hi 👋\nWho are you traveling with?\nfamily / friends / solo / old age","bot");
+      step=1;
+    }else add("Please type **hi** to start 😊","bot");
+  }
+
+  else if(step===1){
+    if(["family","friends","solo","old age","oldage"].includes(text)){
+      userType=text;
+      add("Which state do you want to visit?","bot");
+      step=2;
+    }else add("Type: family / friends / solo / old age","bot");
+  }
+
+  else if(step===2){
+    state=text;
+    add("Select budget:\nlow / medium / high","bot");
+    step=3;
+  }
+
+  else if(step===3){
+    if(["low","medium","high"].includes(text)){
+      budget=text;
+      showPlaces();
+      step=4;
+    }else add("Type: low / medium / high","bot");
+  }
+
+  else{
+    if(text.includes("change budget")){
+      add("Select budget again:\nlow / medium / high","bot");
+      step=3;
+    }
+    else if(text.includes("change user")){
+      add("Who are you traveling with?\nfamily / friends / solo / old age","bot");
+      step=1;
+    }
+    else add("You can type:\nchange budget\nchange user","bot");
+  }
+}
+
+/* ===== SHOW PLACES ===== */
+function showPlaces(){
+  let places=data[state]?.[budget]||["No data available"];
+  add(
+`✨ Places in ${state.toUpperCase()} (${budget} budget):
+
+1. ${places.join("\n2. ")}
+
+Type:
+• change budget
+• change user`,
+"bot");
+}
+
+/* ===== VOICE INPUT ===== */
+function startVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert("Voice not supported");return;}
+  const r=new SR();
+  r.lang="en-IN";
+  r.start();
+  r.onresult=e=>{
+    input.value=e.results[0][0].transcript;
+    send();
+  };
+}
+</script>
+
+</body>
+</html>
